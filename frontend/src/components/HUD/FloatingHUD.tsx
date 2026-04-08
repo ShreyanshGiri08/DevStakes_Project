@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Flame, Trophy, Target, Sparkles } from 'lucide-react';
+import { Flame, Trophy, Target, Sparkles, Home } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function FloatingHUD() {
@@ -13,7 +13,7 @@ export default function FloatingHUD() {
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 ${useStore.getState().activeNodes.length === 0 ? 'hidden' : ''}`}
     >
       <motion.div 
         layout
@@ -64,13 +64,23 @@ export default function FloatingHUD() {
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
                 <Target className="w-5 h-5 text-emerald-400" />
               </div>
-              <div>
+              <div className="mr-4">
                 <div className="text-xs font-semibold text-slate-400">NEXT GOAL</div>
                 <div className="font-medium text-sm text-emerald-300">
-                  Complete 'Hooks'
+                  Keep learning
                 </div>
               </div>
             </div>
+
+            <div className="w-px h-8 bg-slate-700/50" />
+
+            {/* Home / Back to search */}
+            <button 
+              onClick={() => useStore.getState().clearActiveRoadmap()}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+            >
+              <Home className="w-5 h-5 text-slate-300" />
+            </button>
           </>
         ) : (
           <>

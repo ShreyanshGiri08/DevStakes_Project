@@ -3,9 +3,13 @@ import type { NodeProps } from '@xyflow/react';
 import { motion } from 'framer-motion';
 import { Lock, CheckCircle2, Play, Star } from 'lucide-react';
 import { clsx } from 'clsx';
-import { TopicNodeData, useStore } from '../../store/useStore';
+import { useStore } from '../../store/useStore';
+import type { TopicNodeData } from '../../store/useStore';
+import type { Node } from '@xyflow/react';
 
-export default function TopicNode({ id, data }: NodeProps<TopicNodeData>) {
+export type TopicNodeType = Node<TopicNodeData, 'topic'>;
+
+export default function TopicNode({ id, data }: NodeProps<TopicNodeType>) {
   const setActiveDeepDive = useStore((state) => state.setActiveDeepDive);
   
   const isLocked = data.status === 'locked';
