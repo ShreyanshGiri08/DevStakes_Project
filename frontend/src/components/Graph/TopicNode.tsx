@@ -1,4 +1,5 @@
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { motion } from 'framer-motion';
 import { Lock, CheckCircle2, Play, Star } from 'lucide-react';
 import { clsx } from 'clsx';

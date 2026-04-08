@@ -18,7 +18,8 @@ export default function DeepDiveScreen() {
         className="w-full max-w-6xl h-[90vh] glass-panel flex overflow-hidden relative shadow-2xl shadow-blue-500/20"
       >
         {/* Close Button */}
-        <button 
+        <button
+          id="deep-dive-close-btn"
           onClick={() => setActiveDeepDive(null)}
           className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700/80 text-slate-300 transition-colors z-10"
         >
@@ -97,7 +98,9 @@ export default function DeepDiveScreen() {
 
 function Tab({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) {
   return (
-    <button className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium transition-colors ${
+    <button 
+      id={`tab-btn-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium transition-colors ${
       active 
         ? 'border-blue-500 text-blue-400 bg-blue-500/5 rounded-t-lg' 
         : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-t-lg'
