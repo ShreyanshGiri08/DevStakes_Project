@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Activity, Mail, Code2, BookOpen, History, TrendingUp, Orbit, Clock, Zap } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { loginUser, generateRoadmap, fetchHistory, fetchSuggestions } from '../../api';
-import Particles from '@tsparticles/react';
+import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import gsap from 'gsap';
 
@@ -25,6 +25,7 @@ export default function LandingScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState(60);
+  const [particlesReady, setParticlesReady] = useState(false);
 
   // GSAP refs
   const heroRef = useRef<HTMLDivElement>(null);
@@ -34,8 +35,10 @@ export default function LandingScreen() {
   const cardsRef = useRef<HTMLDivElement>(null);
   const cursorOrbRef = useRef<HTMLDivElement>(null);
 
-  const particlesInit = useCallback(async (engine: any) => {
-    await loadSlim(engine);
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine);
+    }).then(() => setParticlesReady(true));
   }, []);
 
   // GSAP: Hero text reveal animation on mount
@@ -145,9 +148,9 @@ export default function LandingScreen() {
         style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', filter: 'blur(40px)' }}
       />
 
+      {particlesReady && (
       <Particles
         id="tsparticles"
-        init={particlesInit}
         options={{
           background: { color: { value: "transparent" } },
           fpsLimit: 60,
@@ -165,6 +168,7 @@ export default function LandingScreen() {
         }}
         className="absolute inset-0 z-0 pointer-events-auto"
       />
+      )}
 
       {/* Header */}
       <div className="absolute top-6 left-6 z-10 flex items-center gap-3">

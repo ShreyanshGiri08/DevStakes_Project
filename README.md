@@ -1,6 +1,10 @@
 # 🔥 Vector Visionary
 ### *Learn Smarter, Not Harder - an AI-powered visual learning engine that turns any goal into a personalized mastery roadmap in seconds.*
 
+### 🎬 Demo video
+
+**Full project walkthrough (YouTube):** [https://www.youtube.com/watch?v=nrUbXmgg0iE](https://www.youtube.com/watch?v=nrUbXmgg0iE)
+
 ---
 
 ## 🌍 Problem Statement

@@ -95,16 +95,6 @@ function avatarSvgFromPreset(p: AvatarPreset) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function hashCode(str: string) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
-  return h | 0;
-}
-
-function escapeXml(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 export default function ProfileSetup() {
   const { userEmail, userPhotoUrl, setUserSession } = useStore();
   const [displayName, setDisplayName] = useState('');

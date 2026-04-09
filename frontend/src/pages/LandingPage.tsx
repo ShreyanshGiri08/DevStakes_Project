@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Particles from '@tsparticles/react';
+import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import gsap from 'gsap';
 import { ArrowRight, BrainCircuit, Network, NotebookPen, Sparkles, Target, Zap, Library } from 'lucide-react';
@@ -66,6 +66,7 @@ const FEATURES = [
 export default function LandingPage() {
   const nav = useNavigate();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [particlesReady, setParticlesReady] = useState(false);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -73,8 +74,10 @@ export default function LandingPage() {
   const ctaRef = useRef<HTMLButtonElement>(null);
   const cardsWrapRef = useRef<HTMLDivElement>(null);
 
-  const particlesInit = useCallback(async (engine: any) => {
-    await loadSlim(engine);
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine);
+    }).then(() => setParticlesReady(true));
   }, []);
 
   useEffect(() => {
@@ -108,9 +111,9 @@ export default function LandingPage() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(59,130,246,0.18),_transparent_55%)] pointer-events-none" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,_rgba(2,6,23,0.2),_rgba(2,6,23,0.95))] pointer-events-none" />
 
+      {particlesReady && (
       <Particles
         id="landing-particles"
-        init={particlesInit}
         options={{
           background: { color: { value: 'transparent' } },
           fpsLimit: 60,
@@ -128,6 +131,7 @@ export default function LandingPage() {
         }}
         className="absolute inset-0 z-0 pointer-events-none"
       />
+      )}
 
       {/* Floating orbs */}
       <motion.div
