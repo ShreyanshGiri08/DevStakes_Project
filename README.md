@@ -1,6 +1,17 @@
 # 🔥 Vector Visionary
 ### *Learn Smarter, Not Harder - an AI-powered visual learning engine that turns any goal into a personalized mastery roadmap in seconds.*
 
+ ## 🚀 Live Demo
+
+- **Frontend (Vercel):**https://vectorvisionarymindmapgenerator.vercel.app/roadmap
+- **Backend API (Render):** https://devstakes-project.onrender.com
+- **API Docs (Swagger):** https://devstakes-project.onrender.com/api/docs
+
+> ⚠️ Backend is hosted on Render's free tier — it may take 30–50 seconds  
+> to wake up on first request. Please wait before testing.
+> ⚠️ Backend is hosted on Render's free tier — it may take 30–50 seconds to wake up on first request.
+
+
 ### 🎬 Demo video
 
 **Full project walkthrough (YouTube):** [https://www.youtube.com/watch?v=nrUbXmgg0iE](https://www.youtube.com/watch?v=nrUbXmgg0iE)
