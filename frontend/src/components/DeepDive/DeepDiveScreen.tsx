@@ -147,7 +147,7 @@ export default function DeepDiveScreen() {
     setNotesLoading(true);
     try {
       const res = await generateNotes(data.title, data.topicContext || '');
-      setNotes(res.notes);
+      setNotes(res.notes as NotesData);
     } catch (e) {
       console.error(e);
     }
@@ -158,9 +158,10 @@ export default function DeepDiveScreen() {
     setQuizLoading(true);
     try {
       const res = await generateQuiz(data.title, data.topicContext || '');
-      setQuizQuestions(res.quiz);
+      const questions = res.quiz as QuizQuestion[];
+      setQuizQuestions(questions);
       const blank: Record<number, null> = {};
-      res.quiz.forEach((_: any, i: number) => { blank[i] = null; });
+      questions.forEach((_, i: number) => { blank[i] = null; });
       setSelectedAnswers(blank);
       setRevealedAnswers({});
     } catch (e) {

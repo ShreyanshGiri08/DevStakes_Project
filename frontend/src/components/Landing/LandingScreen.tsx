@@ -21,6 +21,8 @@ export default function LandingScreen() {
   const [emailInput, setEmailInput] = useState('');
   const [topicInput, setTopicInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -83,12 +85,15 @@ export default function LandingScreen() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput) return;
+    setLoginError(null);
     setLoading(true);
     try {
       const data = await loginUser(emailInput);
       setUserSession(data.user.email, data.user.display_name, data.user.photo_url);
       setProgression(data.user.xp, data.user.streak_days, data.user.level);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Login failed.";
+      setLoginError(msg);
       console.error("Login failed", err);
     }
     setLoading(false);
@@ -98,6 +103,7 @@ export default function LandingScreen() {
     e?.preventDefault();
     const topic = overrideTopic || topicInput;
     if (!topic || !userEmail) return;
+    setActionError(null);
     setLoading(true);
     setAvailableTime(selectedTime);
     try {
@@ -105,6 +111,8 @@ export default function LandingScreen() {
       addTopicToHistory(topic);
       setActiveRoadmap(data.nodes, data.edges, topic);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not generate roadmap.";
+      setActionError(msg);
       console.error("Generation failed", err);
     }
     setLoading(false);
@@ -265,8 +273,13 @@ export default function LandingScreen() {
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input type="email" placeholder="Your email..." className="w-full bg-slate-950/80 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-600"
-                      value={emailInput} onChange={(e) => setEmailInput(e.target.value)} disabled={loading} />
+                      value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setLoginError(null); }} disabled={loading} />
                   </div>
+                  {loginError && (
+                    <p className="text-xs text-red-400 leading-relaxed" role="alert">
+                      {loginError}
+                    </p>
+                  )}
                   <button type="submit" disabled={loading || !emailInput}
                     className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50">
                     {loading ? 'Authenticating...' : 'Enter Ecosystem'} <ArrowRight className="w-5 h-5" />
@@ -300,7 +313,12 @@ export default function LandingScreen() {
                 <form onSubmit={handleGenerate} className="space-y-3 mb-4 relative z-20">
                   <input type="text" placeholder="e.g. React, Machine Learning, DSA..."
                     className="w-full bg-slate-950/80 border border-slate-700 rounded-xl py-3 px-5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-600"
-                    value={topicInput} onChange={(e) => setTopicInput(e.target.value)} disabled={loading} />
+                    value={topicInput} onChange={(e) => { setTopicInput(e.target.value); setActionError(null); }} disabled={loading} />
+                  {actionError && (
+                    <p className="text-xs text-red-400 leading-relaxed" role="alert">
+                      {actionError}
+                    </p>
+                  )}
                   <button type="submit" disabled={loading || !topicInput}
                     className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50">
                     {loading ? (
