@@ -17,9 +17,38 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Vector Visionary — Anti-Gravity Learning Engine")
 
+# Lightweight SQLite migration for local dev:
+# ensure optional profile columns exist even if DB was created before they were added.
+try:
+    if str(engine.url).startswith("sqlite"):
+        from sqlalchemy import text
+
+        with engine.connect() as conn:
+            cols = conn.execute(text("PRAGMA table_info(users);")).fetchall()
+            existing = {row[1] for row in cols}  # row[1] = column name
+            if "display_name" not in existing:
+                conn.execute(text("ALTER TABLE users ADD COLUMN display_name VARCHAR;"))
+            if "profile_photo_url" not in existing:
+                conn.execute(text("ALTER TABLE users ADD COLUMN profile_photo_url VARCHAR;"))
+            conn.commit()
+except Exception as e:
+    # Don't hard-fail app startup on a best-effort dev migration
+    print(f"DB migration warning: {e}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:5176",
+        "http://127.0.0.1:5177",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,7 +84,7 @@ class GenerateNotesRequest(BaseModel):
 class GenerateQuizRequest(BaseModel):
     title: str
     topic_context: str
-
+   
 # ─── LLM Setup (Groq primary, Gemini fallback) ───
 # Groq: Free, fast, generous rate limits (30 req/min)
 # Get your free key at: https://console.groq.com/keys
@@ -122,8 +151,8 @@ def _call_llm(prompt: str, system: str = ANTI_GRAVITY_SYSTEM) -> str:
                     {"role": "system", "content": system},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2048,
+                temperature=0.55,
+                max_tokens=4096,
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
@@ -191,7 +220,18 @@ def setup_profile(req: ProfileSetupRequest, db: Session = Depends(get_db)):
     user.display_name = req.display_name
     user.profile_photo_url = req.photo_url
     db.commit()
-    return {"message": "Profile updated"}
+    db.refresh(user)
+    return {
+        "message": "Profile updated",
+        "user": {
+            "email": user.email,
+            "display_name": user.display_name,
+            "photo_url": user.profile_photo_url,
+            "xp": user.xp,
+            "streak_days": user.streak_days,
+            "level": user.level,
+        },
+    }
 
 @app.post("/api/user/progress")
 def sync_progress(req: ProgressRequest, db: Session = Depends(get_db)):
@@ -223,27 +263,59 @@ def generate_roadmap(req: AIRequest, db: Session = Depends(get_db)):
     else:
         node_count = 10
 
-    prompt = f"""Generate a learning roadmap for '{t}' with EXACTLY {node_count} nodes.
-The user has {time_mins} minutes to learn this topic, so adjust depth accordingly.
+    prompt = f"""You are an expert curriculum designer and senior engineer.
 
-If {node_count} <= 5: linear path (Intro → Core → Practice → Apply → Summary)
-If {node_count} == 6-8: branching tree (Root → 2 beginner → 2-4 intermediate → Mastery)
-If {node_count} >= 9: deep multi-branch (Root → 2-3 beginner → 3-4 intermediate → 2-3 advanced → Mastery)
+Design a roadmap for learning **{t}** with EXACTLY {node_count} nodes, tailored to a total study time of **{time_mins} minutes**.
 
-Return ONLY a JSON array of {node_count} objects. No markdown fences. Each object:
-{{"title": "Specific Topic Title", "description": "One compelling sentence.", "topicContext": "A rich 2-3 sentence paragraph explaining the concept."}}
+QUALITY BAR (very important):
+- Titles must be SPECIFIC to {t} (no generic "Introduction", "Basics", "Advanced").
+- Each node must be immediately actionable and teach one cohesive idea.
+- Avoid duplication across nodes.
+- Keep the sequence coherent (prerequisites before advanced concepts).
+- Write as if for a motivated learner who wants real-world competence.
 
-Make titles SPECIFIC to '{t}', not generic. For example if the topic is 'React', use titles like 'JSX & Component Composition', 'Hooks & State Management', etc."""
+STRUCTURE:
+- If {node_count} <= 5: a clear linear path (concept → core → practice → build → review)
+- If 6-8: 1 root → 2 foundations → 2-4 intermediate branches → 1 capstone/mastery
+- If >= 9: 1 root → 2-3 foundations → 3-4 intermediate → 2-3 advanced → 1 capstone
+
+Return ONLY valid JSON (no markdown fences), an array of {node_count} objects.
+Each object MUST include these fields:
+{{
+  "title": "string (6-60 chars, specific)",
+  "description": "string (1-2 sentences, concrete and outcome-oriented)",
+  "topicContext": "string (8-14 sentences). Include: mental model, key terms, common pitfalls, tiny hands-on exercise, and 2-3 resources with URLs (official docs + 1 tutorial + 1 reference).",
+  "estimatedMinutes": number (sum across nodes ≈ {time_mins}),
+  "prerequisites": ["string", ...] (0-4 items),
+  "outcomes": ["string", ...] (3-6 items)
+}}
+
+Resource URL rules:
+- Use official docs when possible, otherwise a reputable canonical page.
+- Include at least one GitHub search link like: https://github.com/search?q=<query>&type=repositories
+
+Example of specificity:
+- For React: "JSX & Component Composition", "Hooks: useState/useEffect Patterns", "React Query + Caching Strategy"
+
+Now produce the JSON array."""
 
     ai_data = None
     if groq_client or GEMINI_API_KEY:
         raw = _call_llm(prompt)
         ai_data = _parse_json_from_llm(raw)
         if ai_data and len(ai_data) != node_count:
-            # Accept close enough
             if ai_data and len(ai_data) >= node_count - 1:
                 ai_data = ai_data[:node_count]
             else:
+                ai_data = None
+        # Guardrail: reject overly generic titles
+        if ai_data:
+            bad = 0
+            for it in ai_data:
+                title = (it.get("title") or "").lower()
+                if any(k in title for k in ["introduction", "basics", "overview", "advanced", "summary"]):
+                    bad += 1
+            if bad >= max(2, node_count // 3):
                 ai_data = None
 
     if not ai_data:
@@ -363,24 +435,52 @@ def _build_tree_layout(ai_data, count):
 
 @app.post("/api/generate-notes")
 def generate_notes(req: GenerateNotesRequest):
-    """Generate rich handwritten-style notes via Gemini."""
-    prompt = f"""Write comprehensive study notes for '{req.title}'.
-Context: {req.topic_context}
+    """Generate structured, high-detail reference notes (Notion-style sections)."""
+    prompt = f"""You are a meticulous technical educator and curriculum designer.
 
-Structure your notes as follows (return as JSON):
+Create **highly detailed reference notes** for:
+- Topic: {req.title}
+- Context: {req.topic_context}
+
+Return ONLY valid JSON (no markdown fences). Use concise but rich writing.
+
+OUTPUT SHAPE (exact keys):
 {{
-  "heading": "Title of the concept",
-  "keyPoints": ["point 1", "point 2", "point 3", "point 4", "point 5"],
-  "explanation": "A thorough 4-5 sentence explanation connecting theory to practice.",
-  "codeExample": "A properly formatted multi-line code snippet with real newlines (use \\n for line breaks). Include proper indentation. Must be at least 4-8 lines of real, working code. If no code is relevant, use empty string.",
-  "proTip": "One expert-level insight that most learners miss.",
-  "connections": "How this topic connects to the broader ecosystem (2 sentences)."
+  "title": "string",
+  "conceptOverview": "Simple, intuitive explanation (5-8 sentences).",
+  "whyItMatters": ["3-6 bullets with real-world applications (strings)"],
+  "coreExplanation": ["Step-by-step breakdown (6-10 bullets)"],
+  "keyFormulasOrRules": [
+    {{
+      "name": "Rule/Formulation name",
+      "formula": "Use plain text or LaTeX-like text if needed",
+      "explanation": "2-4 sentences",
+      "whenToUse": "1-2 sentences"
+    }}
+  ],
+  "commonMistakes": [
+    {{
+      "mistake": "What learners do wrong",
+      "whyItsWrong": "1-3 sentences",
+      "fix": "How to do it correctly (1-3 sentences)"
+    }}
+  ],
+  "examples": {{
+    "easy": [{{"prompt":"...", "solutionOutline":["..."], "answer":"..."}}],
+    "medium": [{{"prompt":"...", "solutionOutline":["..."], "answer":"..."}}],
+    "hard": [{{"prompt":"...", "solutionOutline":["..."], "answer":"..."}}]
+  }},
+  "tldr": ["3-6 bullets"],
+  "relatedTopics": ["5-10 strings (nearby concepts to explore next)"],
+  "aiPracticePrompt": "A single, concrete practice question for the user to try next"
 }}
 
-CRITICAL for codeExample: Use actual newline characters (\\n) and spaces for indentation inside the JSON string. Example:
-"codeExample": "function greet(name) {{\n  const msg = `Hello, ${{name}}`;\n  console.log(msg);\n  return msg;\n}}"
-
-Return ONLY the JSON object. No markdown fences."""
+Rules:
+- Be accurate and specific to the topic.
+- Examples must progress Easy → Medium → Hard.
+- Use developer-friendly language and name real tools/APIs if relevant.
+- Keep each example's 'answer' short (1-4 sentences) and 'solutionOutline' actionable.
+"""
 
     if groq_client or GEMINI_API_KEY:
         raw = _call_llm(prompt)
@@ -389,18 +489,37 @@ Return ONLY the JSON object. No markdown fences."""
             return {"notes": parsed, "source": "ai"}
 
     return {"notes": {
-        "heading": req.title,
-        "keyPoints": [
-            f"{req.title} is a foundational concept.",
-            "It bridges theory and practical implementation.",
-            "Understanding prerequisites is critical.",
-            "Real-world applications are widespread.",
-            "Mastery requires iterative practice."
+        "title": req.title,
+        "conceptOverview": req.topic_context or f"{req.title} explained in simple terms with an emphasis on the mental model and typical use-cases.",
+        "whyItMatters": [
+            f"Improves your practical ability to apply {req.title} in real projects.",
+            "Reduces bugs by clarifying common pitfalls and correct patterns.",
+            "Helps you recognize when to use (and not use) this concept.",
         ],
-        "explanation": req.topic_context or f"{req.title} establishes core patterns used across the domain.",
-        "codeExample": "",
-        "proTip": f"The secret to mastering {req.title} is to build small projects that force you to apply each concept.",
-        "connections": f"{req.title} connects deeply to adjacent domains. Understanding it unlocks pathways to more advanced topics."
+        "coreExplanation": [
+            "Start from the mental model and define the problem this concept solves.",
+            "Learn the core primitives and how they compose.",
+            "Apply the concept to a tiny exercise, then expand scope.",
+            "Validate understanding by explaining trade-offs and edge cases.",
+            "Practice with progressively harder examples.",
+            "Connect to adjacent topics for deeper mastery.",
+        ],
+        "keyFormulasOrRules": [],
+        "commonMistakes": [
+            {"mistake": "Memorizing without practicing", "whyItsWrong": "You won't build intuition for real constraints.", "fix": "Implement a small example and test edge cases."},
+        ],
+        "examples": {
+            "easy": [{"prompt": f"Explain {req.title} in your own words.", "solutionOutline": ["Define the mental model", "Give one real-world use-case"], "answer": "A clear explanation + one practical example."}],
+            "medium": [{"prompt": f"Apply {req.title} to solve a slightly bigger problem.", "solutionOutline": ["Identify inputs/outputs", "Apply the concept", "Validate constraints"], "answer": "A correct approach and a short reasoning."}],
+            "hard": [{"prompt": f"Design a robust solution using {req.title} with real-world constraints.", "solutionOutline": ["List constraints", "Propose design", "Explain trade-offs"], "answer": "A solid design with trade-offs."}],
+        },
+        "tldr": [
+            f"{req.title} is best understood through a mental model + repeated practice.",
+            "Focus on pitfalls and edge cases early.",
+            "Use progressively harder examples to lock it in.",
+        ],
+        "relatedTopics": [],
+        "aiPracticePrompt": f"Give me a practice problem that specifically tests understanding of {req.title}, then ask me to solve it."
     }, "source": "fallback"}
 
 @app.post("/api/generate-quiz")
