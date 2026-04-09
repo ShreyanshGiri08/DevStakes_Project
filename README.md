@@ -210,7 +210,7 @@ sequenceDiagram
 | `/api/history/{email}` | GET | List saved roadmaps |
 | `/api/suggestions` | POST | Next topics from recent history |
 
-> Full interactive docs: `http://127.0.0.1:8000/docs` when the backend is running.
+> Full interactive docs: `https://devstakes-project.onrender.com/api/docs`
 
 ### Time budget → roadmap size
 
