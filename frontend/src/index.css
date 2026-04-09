@@ -1,77 +1,79 @@
 @import "tailwindcss";
 
-/* Custom utility variables for the theme */
-@theme {
-  --color-primary: #3b82f6; /* blue-500 */
-  --color-primary-dark: #2563eb; /* blue-600 */
-  --color-accent: #8b5cf6; /* violet-500 */
-  --color-background: #0f172a; /* slate-900 */
-  --color-surface: #1e293b; /* slate-800 */
-  --color-surface-light: #334155; /* slate-700 */
-}
-
+/* Typography */
 body {
-  margin: 0;
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: var(--color-background);
-  color: #f8fafc; /* slate-50 */
-  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism Classes */
-.glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
 }
 
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.5); }
+
+/* Glassmorphism */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(51, 65, 85, 0.5);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Glow */
+.glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Topic-based dynamic backgrounds */
+.topic-bg-tech { --accent: 59 130 246; }
+.topic-bg-science { --accent: 16 185 129; }
+.topic-bg-creative { --accent: 168 85 247; }
+.topic-bg-business { --accent: 245 158 11; }
+.topic-bg-default { --accent: 99 102 241; }
+
+/* Pinned node pulse */
+.pinned-glow {
+  box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
+  animation: pinPulse 2s infinite;
+}
+@keyframes pinPulse {
+  0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+/* Animate-in */
+.animate-in {
+  animation: animateIn 0.3s ease-out;
+}
+@keyframes animateIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+html { scroll-behavior: smooth; }
+
+.react-flow__attribution { display: none !important; }
+
+/* Animated gradient text shimmer */
+.animate-gradient-x {
+  background-size: 200% auto;
+  animation: gradientShimmer 3s ease-in-out infinite;
+}
+@keyframes gradientShimmer {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
 }
 
-/* React Flow overrrides for dark theme */
-.react-flow__pane {
-  background-color: var(--color-background);
-}
-
-.react-flow__controls-button {
-  background-color: var(--color-surface) !important;
-  color: white !important;
-  border-bottom-color: var(--color-surface-light) !important;
-}
-
-.react-flow__controls-button:hover {
-  background-color: var(--color-surface-light) !important;
-}
-
-.react-flow__minimap {
-  background-color: var(--color-surface) !important;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.react-flow__minimap-mask {
-  fill: rgba(0, 0, 0, 0.4) !important;
+/* Code block styling */
+pre code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace !important;
+  white-space: pre !important;
+  tab-size: 4;
 }
