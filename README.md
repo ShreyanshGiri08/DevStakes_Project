@@ -270,8 +270,11 @@ sequenceDiagram
 
 ### 🌐 Deployment (5 pts)
 
-- Frontend and backend are deployment-ready with environment-based config.
+- Frontend and backend are **live and publicly accessible** — deployed on **Vercel** (frontend) and **Render** (backend) with zero manual setup required for judges.
+- **Frontend (Vercel):** https://vectorvisionarymindmapgenerator.vercel.app/roadmap — production build served via global CDN for fast load times worldwide.
+- **Backend (Render):** https://devstakes-project.onrender.com — live REST API with full **Swagger/OpenAPI docs** at `/api/docs` for transparent, explorable endpoints.
 - CORS and API abstraction simplify multi-environment rollout.
+- Environment-based config cleanly separates dev and production secrets.
 - Architecture supports stable live demo links and continuous uptime on modern cloud platforms.
 
 ---
