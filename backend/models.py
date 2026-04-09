@@ -6,8 +6,6 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
-    display_name = Column(String, nullable=True)
-    profile_photo_url = Column(String, nullable=True)
     xp = Column(Integer, default=0)
     streak_days = Column(Integer, default=0)
     level = Column(Integer, default=1)
