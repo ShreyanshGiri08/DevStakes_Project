@@ -3,7 +3,7 @@
 
  ## 🚀 Live Demo
 
--**Frontend (Vercel):** https://vectorvisionarymindmapgenerator.vercel.app/roadmap
+- **Frontend (Vercel):** https://vectorvisionarymindmapgenerator.vercel.app/roadmap
 - **Backend API (Render):** https://devstakes-project.onrender.com
 - **API Docs (Swagger):** https://devstakes-project.onrender.com/api/docs
 
