@@ -9,8 +9,6 @@
 
 > ⚠️ Backend is hosted on Render's free tier — it may take 30–50 seconds  
 > to wake up on first request. Please wait before testing.
-> ⚠️ Backend is hosted on Render's free tier — it may take 30–50 seconds to wake up on first request.
-
 
 ### 🎬 Demo video
 
