@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, BrainCircuit, CheckSquare, ChevronRight, CheckCircle2, Send, Code2, PenTool, Loader2, ExternalLink, Trophy, XCircle, Orbit, RotateCcw } from 'lucide-react';
+import { X, FileText, BrainCircuit, CheckSquare, ChevronRight, CheckCircle2, Send, Code2, PenTool, Loader2, ExternalLink, Trophy, XCircle, Orbit, RotateCcw, Play } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { TopicNodeType } from '../../store/useStore';
 import { chatTutor, syncProgress, generateNotes, generateQuiz } from '../../api';
@@ -35,13 +35,51 @@ function renderMarkdown(text: string): string {
   return html;
 }
 
-interface NotesData {
+interface NotesRule {
+  name: string;
+  formula: string;
+  explanation: string;
+  whenToUse: string;
+}
+
+interface NotesMistake {
+  mistake: string;
+  whyItsWrong: string;
+  fix: string;
+}
+
+interface NotesExample {
+  prompt: string;
+  solutionOutline: string[];
+  answer: string;
+}
+
+interface StructuredNotesData {
+  title: string;
+  conceptOverview: string;
+  whyItMatters: string[];
+  coreExplanation: string[];
+  keyFormulasOrRules: NotesRule[];
+  commonMistakes: NotesMistake[];
+  examples: { easy: NotesExample[]; medium: NotesExample[]; hard: NotesExample[] };
+  tldr: string[];
+  relatedTopics: string[];
+  aiPracticePrompt: string;
+}
+
+interface LegacyNotesData {
   heading: string;
   keyPoints: string[];
   explanation: string;
   codeExample: string;
   proTip: string;
   connections: string;
+}
+
+type NotesData = StructuredNotesData | LegacyNotesData;
+
+function isStructuredNotes(n: any): n is StructuredNotesData {
+  return !!n && typeof n === 'object' && typeof n.title === 'string' && typeof n.conceptOverview === 'string';
 }
 
 interface QuizQuestion {
@@ -201,11 +239,13 @@ export default function DeepDiveScreen() {
       case 'Notes':
         return (
           <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-beteen mb-2">
               <h1 className="text-3xl font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{data.title}</h1>
               {notes && (
                 <button onClick={() => {
-                  const text = `# ${notes.heading}\n\n## Key Points\n${notes.keyPoints.map((p: string) => `• ${p}`).join('\n')}\n\n## Explanation\n${notes.explanation}\n\n## Code Example\n${notes.codeExample}\n\n## Pro Tip\n${notes.proTip}\n\n## Connections\n${notes.connections}\n\n— Vector Visionary 🚀`;
+                  const text = isStructuredNotes(notes)
+                    ? `# ${notes.title}\n\n## Concept Overview\n${notes.conceptOverview}\n\n## Why It Matters\n${notes.whyItMatters.map((p) => `- ${p}`).join('\n')}\n\n## Core Explanation\n${notes.coreExplanation.map((p) => `- ${p}`).join('\n')}\n\n## Key Formulas / Rules\n${notes.keyFormulasOrRules.map((r) => `- **${r.name}**: ${r.formula}\n  - ${r.explanation}\n  - When: ${r.whenToUse}`).join('\n')}\n\n## Common Mistakes\n${notes.commonMistakes.map((m) => `- **${m.mistake}**\n  - Why: ${m.whyItsWrong}\n  - Fix: ${m.fix}`).join('\n')}\n\n## Examples\n### Easy\n${notes.examples.easy.map((e) => `- ${e.prompt}\n  - Outline: ${e.solutionOutline.join(' | ')}\n  - Answer: ${e.answer}`).join('\n')}\n\n### Medium\n${notes.examples.medium.map((e) => `- ${e.prompt}\n  - Outline: ${e.solutionOutline.join(' | ')}\n  - Answer: ${e.answer}`).join('\n')}\n\n### Hard\n${notes.examples.hard.map((e) => `- ${e.prompt}\n  - Outline: ${e.solutionOutline.join(' | ')}\n  - Answer: ${e.answer}`).join('\n')}\n\n## TL;DR\n${notes.tldr.map((p) => `- ${p}`).join('\n')}\n\n## Related Topics\n${notes.relatedTopics.map((t) => `- ${t}`).join('\n')}\n\n## AI Practice Prompt\n${notes.aiPracticePrompt}\n\n— Vector Visionary 🚀`
+                    : `# ${notes.heading}\n\n## Key Points\n${notes.keyPoints.map((p: string) => `• ${p}`).join('\n')}\n\n## Explanation\n${notes.explanation}\n\n## Code Example\n${notes.codeExample}\n\n## Pro Tip\n${notes.proTip}\n\n## Connections\n${notes.connections}\n\n— Vector Visionary 🚀`;
                   const blob = new Blob([text], { type: 'text/markdown' });
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
@@ -227,60 +267,11 @@ export default function DeepDiveScreen() {
               </div>
             ) : notes ? (
               <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <style>{`
-                  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;700&display=swap');
-                `}</style>
-                <div className="bg-[#fdfaf6] rounded-2xl border border-amber-200/50 shadow-lg overflow-hidden">
-                  {/* Notebook paper effect */}
-                  <div className="relative p-8 pl-20" style={{
-                    backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e5e7eb 31px, #e5e7eb 32px)',
-                    backgroundAttachment: 'local'
-                  }}>
-                    <div className="absolute top-0 bottom-0 left-16 w-[2px] bg-red-300/50" />
-
-                    <div style={{ fontFamily: "'Caveat', cursive", lineHeight: '32px', fontSize: '1.4rem', color: '#1e293b' }}>
-                      <h2 className="text-3xl font-bold text-blue-600 mb-1" style={{ fontFamily: "'Caveat', cursive" }}>{notes.heading}</h2>
-                      <div className="w-32 h-1 bg-blue-400/40 rounded mb-4" />
-
-                      <p className="mb-4 text-slate-700">{notes.explanation}</p>
-
-                      <h3 className="text-xl font-bold text-violet-600 mt-6 mb-2" style={{ fontFamily: "'Caveat', cursive" }}>Key Takeaways ✦</h3>
-                      <ul className="space-y-1 mb-4">
-                        {notes.keyPoints.map((pt, i) => (
-                          <li key={i} className="flex gap-2 items-start">
-                            <span className="text-blue-500 font-bold shrink-0">•</span>
-                            <span>{pt}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      {notes.codeExample && (
-                        <>
-                          <h3 className="text-xl font-bold text-emerald-600 mt-6 mb-2" style={{ fontFamily: "'Caveat', cursive" }}>Code Example 💻</h3>
-                          <div className="bg-[#1e1e2e] rounded-xl overflow-hidden border border-slate-700/50 shadow-inner">
-                            <div className="flex items-center justify-between px-4 py-2 bg-slate-800/80 border-b border-slate-700/50">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                                <div className="w-3 h-3 rounded-full bg-amber-500/60" />
-                                <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
-                              </div>
-                              <span className="text-[10px] text-slate-500 font-mono">code</span>
-                            </div>
-                            <pre className="p-4 overflow-x-auto" style={{ margin: 0, whiteSpace: 'pre', fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace", fontSize: '0.82rem', lineHeight: '1.7', tabSize: 4, color: '#a6e3a1' }}><code>{notes.codeExample}</code></pre>
-                          </div>
-                        </>
-                      )}
-
-                      <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-xl">
-                        <span className="font-bold text-amber-700">💡 Pro Tip: </span>
-                        <span className="text-amber-800">{notes.proTip}</span>
-                      </div>
-
-                      <p className="mt-6 text-slate-500 text-lg italic">{notes.connections}</p>
-                      <p className="mt-4 text-right text-slate-400 text-base">— Vector Visionary 🚀</p>
-                    </div>
-                  </div>
-                </div>
+                {isStructuredNotes(notes) ? (
+                  <StructuredNotesView notes={notes} />
+                ) : (
+                  <LegacyNotesView notes={notes} />
+                )}
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center text-slate-500">Failed to load notes. Click to retry.
@@ -323,6 +314,38 @@ export default function DeepDiveScreen() {
                 </div>
                 <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-emerald-400" />
               </a>
+            </div>
+
+            <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-white">Suggested YouTube Videos</h3>
+                <span className="text-[11px] text-slate-500">Opens YouTube search results</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { label: 'Beginner-friendly', q: `${data.title} tutorial for beginners` },
+                  { label: 'Deep explanation', q: `${data.title} explained in depth` },
+                  { label: 'Build a project', q: `${data.title} project walkthrough` },
+                ].map((item) => (
+                  <a
+                    key={item.label}
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(item.q)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-3 p-4 bg-slate-900/70 hover:bg-slate-900 border border-slate-700/60 rounded-xl transition-all"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-red-500/15 flex items-center justify-center border border-red-500/20">
+                      <Play className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-100 group-hover:text-red-300 transition-colors">{item.label}</div>
+                      <div className="text-[11px] text-slate-500 truncate">{item.q}</div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-600 group-hover:text-red-300 transition-colors" />
+                  </a>
+                ))}
+              </div>
             </div>
 
             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl">
@@ -668,5 +691,260 @@ function Tab({ icon, label, active, onClick }: { icon: React.ReactNode; label: s
       {icon}
       {label}
     </button>
+  );
+}
+
+function StructuredNotesView({ notes }: { notes: StructuredNotesData }) {
+  return (
+    <div className="bg-slate-950/40 border border-slate-800/60 rounded-2xl overflow-hidden shadow-[0_0_80px_rgba(99,102,241,0.06)]">
+      <div className="px-6 py-5 border-b border-slate-800/60 bg-gradient-to-r from-slate-950/60 to-slate-900/30">
+        <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Reference Notes</div>
+        <div className="text-2xl font-bold text-white mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          {notes.title}
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <CollapsibleSection title="Concept Overview" defaultOpen>
+          <p className="text-slate-200 leading-relaxed">{notes.conceptOverview}</p>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Why It Matters" defaultOpen>
+          <ul className="space-y-2">
+            {notes.whyItMatters.map((x, i) => (
+              <li key={i} className="text-slate-200 flex gap-2">
+                <span className="text-blue-400 mt-0.5">•</span>
+                <span>{x}</span>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Core Explanation (step-by-step)" defaultOpen>
+          <ol className="space-y-2">
+            {notes.coreExplanation.map((x, i) => (
+              <li key={i} className="text-slate-200 flex gap-3">
+                <span className="text-blue-400 font-bold">{i + 1}.</span>
+                <span>{x}</span>
+              </li>
+            ))}
+          </ol>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Key Formulas / Rules">
+          {notes.keyFormulasOrRules.length === 0 ? (
+            <div className="text-sm text-slate-500">No formulas/rules for this topic.</div>
+          ) : (
+            <div className="space-y-3">
+              {notes.keyFormulasOrRules.map((r, i) => (
+                <div key={i} className="p-4 rounded-xl border border-slate-800/70 bg-slate-950/40">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold text-white">{r.name}</div>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500">Rule</span>
+                  </div>
+                  {r.formula && (
+                    <div className="mt-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 font-mono text-sm text-blue-200 overflow-x-auto">
+                      {r.formula}
+                    </div>
+                  )}
+                  <div className="mt-3 text-slate-200 leading-relaxed">{r.explanation}</div>
+                  <div className="mt-3 text-sm text-slate-400">
+                    <span className="font-semibold text-slate-200">When to use:</span> {r.whenToUse}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Common Mistakes">
+          <div className="space-y-3">
+            {notes.commonMistakes.map((m, i) => (
+              <div key={i} className="p-4 rounded-xl border border-slate-800/70 bg-slate-950/40">
+                <div className="font-semibold text-rose-200">Mistake: {m.mistake}</div>
+                <div className="mt-2 text-slate-200 leading-relaxed">
+                  <span className="text-slate-400 font-semibold">Why it’s wrong:</span> {m.whyItsWrong}
+                </div>
+                <div className="mt-2 text-slate-200 leading-relaxed">
+                  <span className="text-slate-400 font-semibold">Fix:</span> {m.fix}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Examples (Easy → Medium → Hard)" defaultOpen>
+          <ExamplesBlock title="Easy" items={notes.examples.easy} />
+          <div className="h-px bg-slate-800/60 my-4" />
+          <ExamplesBlock title="Medium" items={notes.examples.medium} />
+          <div className="h-px bg-slate-800/60 my-4" />
+          <ExamplesBlock title="Hard" items={notes.examples.hard} />
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Quick Summary (TL;DR)" defaultOpen>
+          <ul className="space-y-2">
+            {notes.tldr.map((x, i) => (
+              <li key={i} className="text-slate-200 flex gap-2">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>{x}</span>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Related Topics">
+          {notes.relatedTopics.length === 0 ? (
+            <div className="text-sm text-slate-500">No related topics provided.</div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {notes.relatedTopics.map((t, i) => (
+                <span key={i} className="px-3 py-1.5 rounded-full bg-slate-900/70 border border-slate-700/60 text-slate-200 text-sm">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="AI Practice Prompt" defaultOpen>
+          <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-blue-500/15 text-slate-100 leading-relaxed">
+            {notes.aiPracticePrompt}
+          </div>
+        </CollapsibleSection>
+      </div>
+    </div>
+  );
+}
+
+function ExamplesBlock({ title, items }: { title: string; items: NotesExample[] }) {
+  return (
+    <div>
+      <div className="text-sm font-bold text-white mb-2">{title}</div>
+      <div className="space-y-3">
+        {items.map((ex, i) => (
+          <div key={i} className="p-4 rounded-xl border border-slate-800/70 bg-slate-950/40">
+            <div className="text-slate-200 font-semibold mb-2">{ex.prompt}</div>
+            {ex.solutionOutline?.length > 0 && (
+              <ul className="space-y-1 mb-2">
+                {ex.solutionOutline.map((s, idx) => (
+                  <li key={idx} className="text-slate-300 text-sm flex gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="text-sm text-slate-300">
+              <span className="text-slate-400 font-semibold">Answer:</span> {ex.answer}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LegacyNotesView({ notes }: { notes: LegacyNotesData }) {
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;700&display=swap');
+      `}</style>
+      <div className="bg-[#fdfaf6] rounded-2xl border border-amber-200/50 shadow-lg overflow-hidden">
+        <div
+          className="relative p-8 pl-20"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e5e7eb 31px, #e5e7eb 32px)',
+            backgroundAttachment: 'local',
+          }}
+        >
+          <div className="absolute top-0 bottom-0 left-16 w-[2px] bg-red-300/50" />
+
+          <div style={{ fontFamily: "'Caveat', cursive", lineHeight: '32px', fontSize: '1.4rem', color: '#1e293b' }}>
+            <h2 className="text-3xl font-bold text-blue-600 mb-1" style={{ fontFamily: "'Caveat', cursive" }}>
+              {notes.heading}
+            </h2>
+            <div className="w-32 h-1 bg-blue-400/40 rounded mb-4" />
+
+            <p className="mb-4 text-slate-700">{notes.explanation}</p>
+
+            <h3 className="text-xl font-bold text-violet-600 mt-6 mb-2" style={{ fontFamily: "'Caveat', cursive" }}>
+              Key Takeaways ✦
+            </h3>
+            <ul className="space-y-1 mb-4">
+              {notes.keyPoints.map((pt, i) => (
+                <li key={i} className="flex gap-2 items-start">
+                  <span className="text-blue-500 font-bold shrink-0">•</span>
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
+
+            {notes.codeExample && (
+              <>
+                <h3 className="text-xl font-bold text-emerald-600 mt-6 mb-2" style={{ fontFamily: "'Caveat', cursive" }}>
+                  Code Example 💻
+                </h3>
+                <div className="bg-[#1e1e2e] rounded-xl overflow-hidden border border-slate-700/50 shadow-inner">
+                  <div className="flex items-center justify-between px-4 py-2 bg-slate-800/80 border-b border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                      <div className="w-3 h-3 rounded-full bg-amber-500/60" />
+                      <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">code</span>
+                  </div>
+                  <pre
+                    className="p-4 overflow-x-auto"
+                    style={{
+                      margin: 0,
+                      whiteSpace: 'pre',
+                      fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace",
+                      fontSize: '0.82rem',
+                      lineHeight: '1.7',
+                      tabSize: 4,
+                      color: '#a6e3a1',
+                    }}
+                  >
+                    <code>{notes.codeExample}</code>
+                  </pre>
+                </div>
+              </>
+            )}
+
+            <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-xl">
+              <span className="font-bold text-amber-700">💡 Pro Tip: </span>
+              <span className="text-amber-800">{notes.proTip}</span>
+            </div>
+
+            <p className="mt-6 text-slate-500 text-lg italic">{notes.connections}</p>
+            <p className="mt-4 text-right text-slate-400 text-base">— Vector Visionary 🚀</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-2xl border border-slate-800/70 bg-slate-950/30 overflow-hidden"
+    >
+      <summary className="list-none cursor-pointer select-none px-4 py-3 flex items-center justify-between gap-3">
+        <div className="font-semibold text-white">{title}</div>
+        <div className="text-slate-500 text-sm group-open:rotate-180 transition-transform">⌄</div>
+      </summary>
+      <div className="px-4 pb-4">{children}</div>
+    </details>
   );
 }
