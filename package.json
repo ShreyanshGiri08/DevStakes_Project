@@ -2,6 +2,6 @@
   "name": "devstakes-project",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm install && npm run build"
+    "build": "cd frontend && npm install && npm run build && node -e \"const fs=require('fs');const p=require('path');const root=p.join(process.cwd(),'..');const out=p.join(root,'dist');fs.rmSync(out,{recursive:true,force:true});fs.cpSync(p.join(process.cwd(),'dist'),out,{recursive:true});\""
   }
 }
