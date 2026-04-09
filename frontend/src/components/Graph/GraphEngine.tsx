@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -7,11 +7,15 @@ import {
   useNodesState,
   useEdgesState,
   ConnectionMode,
+  Panel,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { motion } from 'framer-motion';
 import TopicNode from './TopicNode';
 import { useStore } from '../../store/useStore';
+import dagre from 'dagre';
+import { ZoomIn, ZoomOut, Expand, Move } from 'lucide-react';
 
 const nodeTypes = {
   topic: TopicNode,
@@ -38,14 +42,29 @@ export default function GraphEngine() {
   const { activeNodes, activeEdges, currentTopic } = useStore();
   const [nodes, setNodes, onNodesChange] = useNodesState(activeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(activeEdges);
+  const rfRef = useRef<ReactFlowInstance<any, any> | null>(null);
 
   useEffect(() => {
-    setNodes(activeNodes);
-    setEdges(activeEdges);
+    // Auto-layout nodes on load/update to avoid tangled edges.
+    const layouted = layoutGraph(activeNodes, activeEdges, 'TB');
+    setNodes(layouted.nodes);
+    setEdges(layouted.edges);
   }, [activeNodes, activeEdges, setNodes, setEdges]);
 
   const cat = useMemo(() => getTopicCategory(currentTopic), [currentTopic]);
   const colors = topicGradients[cat];
+
+  const handleFit = useCallback(() => {
+    requestAnimationFrame(() => rfRef.current?.fitView({ padding: 0.18, duration: 500 }));
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    rfRef.current?.zoomIn({ duration: 200 });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    rfRef.current?.zoomOut({ duration: 200 });
+  }, []);
 
   return (
     <div className="w-full h-full bg-slate-900 relative overflow-hidden">
@@ -80,13 +99,28 @@ export default function GraphEngine() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
+          onInit={(instance) => {
+            rfRef.current = instance;
+            requestAnimationFrame(() => instance.fitView({ padding: 0.18, duration: 0 }));
+          }}
           fitView
           minZoom={0.1}
-          maxZoom={1.5}
+          maxZoom={2}
+          panOnScroll
+          zoomOnScroll
+          zoomOnPinch
+          selectionOnDrag={false}
+          panOnDrag
+          zoomOnDoubleClick={false}
+          defaultEdgeOptions={{
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: 'rgba(99,102,241,0.75)', strokeWidth: 2 },
+          }}
           proOptions={{ hideAttribution: true }}
         >
           <Background color={colors.dots} gap={24} size={2} />
-          <Controls className="!bg-slate-800 !border-slate-700 !fill-slate-300 shadow-xl" />
+          <Controls className="!bg-slate-800 !border-slate-700 !fill-slate-300 shadow-xl" showInteractive={false} />
           <MiniMap
             nodeColor={(node: any) => {
               if (node.data.status === 'completed') return '#10b981';
@@ -96,8 +130,89 @@ export default function GraphEngine() {
             maskColor="rgba(15, 23, 42, 0.7)"
             className="!border-slate-700 shadow-2xl"
           />
+
+          <Panel position="top-right" className="!m-4">
+            <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-700/60 backdrop-blur-xl rounded-2xl px-3 py-2 shadow-2xl">
+              <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider pr-2 border-r border-slate-700/60">
+                <Move className="w-3.5 h-3.5" />
+                Navigate
+              </div>
+              <button
+                onClick={handleZoomOut}
+                className="w-9 h-9 rounded-xl bg-slate-800/70 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center transition-colors"
+                title="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4 text-slate-200" />
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className="w-9 h-9 rounded-xl bg-slate-800/70 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center transition-colors"
+                title="Zoom in"
+              >
+                <ZoomIn className="w-4 h-4 text-slate-200" />
+              </button>
+              <button
+                onClick={handleFit}
+                className="w-9 h-9 rounded-xl bg-slate-800/70 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center transition-colors"
+                title="Fit to view"
+              >
+                <Expand className="w-4 h-4 text-slate-200" />
+              </button>
+            </div>
+          </Panel>
         </ReactFlow>
       </div>
     </div>
   );
+}
+
+function layoutGraph(
+  inputNodes: any[],
+  inputEdges: any[],
+  direction: 'TB' | 'LR' = 'TB'
+): { nodes: any[]; edges: any[] } {
+  if (!inputNodes?.length) return { nodes: inputNodes, edges: inputEdges };
+
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: direction,
+    ranksep: 120,
+    nodesep: 60,
+    edgesep: 20,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  const NODE_W = 220; // matches TopicNode w-52 (~208) + padding
+  const NODE_H = 120;
+
+  for (const n of inputNodes) {
+    g.setNode(n.id, { width: NODE_W, height: NODE_H });
+  }
+  for (const e of inputEdges) {
+    g.setEdge(e.source, e.target);
+  }
+
+  dagre.layout(g);
+
+  const nodes = inputNodes.map((n) => {
+    const p = g.node(n.id);
+    if (!p) return n;
+    return {
+      ...n,
+      sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+      targetPosition: direction === 'LR' ? 'left' : 'top',
+      position: { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 },
+    };
+  });
+
+  const edges = inputEdges.map((e) => ({
+    ...e,
+    type: e.type ?? 'smoothstep',
+    animated: true,
+    style: { ...(e.style ?? {}), strokeWidth: 2 },
+  }));
+
+  return { nodes, edges };
 }
