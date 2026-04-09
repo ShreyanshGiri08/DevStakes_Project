@@ -210,7 +210,7 @@ sequenceDiagram
 | `/api/history/{email}` | GET | List saved roadmaps |
 | `/api/suggestions` | POST | Next topics from recent history |
 
-> Full interactive docs: `https://devstakes-project.onrender.com/api/docs`
+> Full interactive docs: [Swagger UI](https://devstakes-project.onrender.com/api/docs)
 
 ### Time budget → roadmap size
 
